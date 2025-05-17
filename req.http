@@ -1,0 +1,24 @@
+get http://localhost:3000/user-api/users
+
+### users with specific blood group
+get http://localhost:3000/user-api/users/O+
+
+### create a new user
+post http://localhost:3000/user-api/user
+Content-Type: application/json
+
+{
+    "username":"Kiran",
+    "age":26,
+    "gender":"Male",
+    "bloodGroup":"O+",
+    "phoneNumber":987654310,
+    "weight":65,
+    "city":"Hyderabad",
+    "state":"Telangana",
+    "pinCode":654321,
+    "lastDonationDate":"2024-11-03"
+}
+
+###update a user
+put http://localhost:3000/user-api/users/
