@@ -2,13 +2,20 @@ import React from 'react'
 import Header from './Header'
 import Footer from './Footer'
 import {Outlet} from 'react-router-dom'
+
 function RootLayout() {
   return (
-    <div>
+    <div style={{ 
+      fontFamily: 'Poppins, sans-serif',
+      backgroundColor: '#FAFAFA',
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
         <Header />
-        <div className="container" style={{minHeight:'90vh'}}>
+        <main style={{ flex: 1 }}>
             <Outlet />
-        </div>
+        </main>
         <Footer />
     </div>
   )

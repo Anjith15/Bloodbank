@@ -10,10 +10,29 @@ app.use(express.json()); // Handles JSON request bodies
 
 // Import API routes
 const userApp = require("./APIs/userApi");
+const requestApp = require("./APIs/requestApi");
+const donationApp = require("./APIs/donationApi");
+
+// Use API routes
 app.use("/user-api", userApp);
+app.use("/request-api", requestApp);
+app.use("/donation-api", donationApp);
+
+// Root route
+app.get("/", (req, res) => {
+  res.send({
+    message: "LifeDrop Blood Bank API is running",
+    version: "1.0.0",
+    endpoints: {
+      users: "/user-api",
+      requests: "/request-api",
+      donations: "/donation-api"
+    }
+  });
+});
 
 // Port config
-const port = process.env.PORT || 4000;
+const port = process.env.PORT || 3000;
 
 // DB connection
 mongoose

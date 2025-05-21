@@ -1,25 +1,42 @@
-const jwt=require('jsonwebtoken')
+const jwt = require('jsonwebtoken');
 
-const verifyToken=(req,res,next)=>{
-    // TOKEN VERIFICATION LOGIC
-
-    // get bearer token
-    let bearerToken=req.headers.authorization
-
-    // if bearerToken not found,send unauthorized
-    if(!bearerToken){
-        res.status(401).send({message:'Unauthorized access'})
-    }else{
-        // extract token from bearer token
-        let token=bearerToken.split(' ')[1]
-        try{
-            // verify the token
-            let decodedToken=jwt.verify(token,'abcdef')
-            next()
-        }catch(err){
-            res.send({message:"Plz relogin to continue"})
-        }
+// JWT verification middleware
+const verifyToken = (req, res, next) => {
+  try {
+    // Get the token from headers
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    // If no token is provided
+    if (!token) {
+      return res.status(401).send({
+        message: 'Authentication required. No token provided.',
+        error: true
+      });
     }
-}
+    
+    // Verify the token
+    jwt.verify(token, process.env.JWT_SECRET || 'abcdef', (err, decodedToken) => {
+      if (err) {
+        return res.status(401).send({
+          message: 'Invalid or expired token',
+          error: true
+        });
+      }
+      
+      // Add user info to request object
+      req.userId = decodedToken.userId;
+      req.email = decodedToken.email;
+      req.userRole = decodedToken.role || 'user';
+      
+      // Continue to the next middleware or route handler
+      next();
+    });
+  } catch (error) {
+    return res.status(500).send({
+      message: 'Authentication error',
+      error: true
+    });
+  }
+};
 
-module.exports=verifyToken
+module.exports = verifyToken;

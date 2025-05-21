@@ -3,61 +3,66 @@ const mongoose=require('mongoose')
 const userSchema=mongoose.Schema({
     username:{
         type:String,
-        required:true,
+        required:[true, 'Username is required'],
         unique:true,
     },
     email:{
         type:String,
-        required:true,
+        required:[true, 'Email is required'],
         unique:true,
         lowercase:true,
-        match: [/\S+@\S+\.\S+/, 'is invalid'],
+        match: [/\S+@\S+\.\S+/, 'Email format is invalid'],
     },
     password:{
         type:String,
-        required:true,
-        minlength:8,
+        required:[true, 'Password is required'],
+        minlength:[8, 'Password must be at least 8 characters'],
     },
     age:{
         type:Number,
-        required:true,
-        min:18,
-        max:65,
+        required:[true, 'Age is required'],
+        min:[18, 'Age must be at least 18'],
+        max:[65, 'Age must be 65 or less'],
     },
     gender:{
         type:String,
-        required:true,
+        required:[true, 'Gender is required'],
     },
     bloodGroup:{
         type:String,
         enum:['A+','A-','B+','B-','O+','O-','AB+','AB-'],
-        required:true,
+        required:[true, 'Blood Group is required'],
     },
     phoneNumber:{
         type:Number,
-        required:true,
+        required:[true, 'Phone Number is required'],
         unique:true,
     },
     weight:{
         type:Number,
-        required:true,
-        min:50,
+        required:[true, 'Weight is required'],
+        min:[50, 'Weight must be at least 50 kg'],
     },
     city: {
         type: String,
-        required: true,
+        required: [true, 'City is required'],
     },
     state: {
         type: String,
-        required: true,
+        required: [true, 'State is required'],
     },
     pinCode: {
         type: Number,
-        required: true,
+        required: [true, 'Pin Code is required'],
     },
     lastDonationDate:{
         type:Date,
-        required:true,
+        required:false,
+    },
+    hasDonatedBefore:{
+        type:Boolean,
+        required:false,
+        default: false
     }
 },{"strict":"throw"})
 
