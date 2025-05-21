@@ -1,28 +1,57 @@
 const nodemailer = require('nodemailer');
 
-// Create a nodemailer transporter
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER || 'your-email@gmail.com', // Use environment variable or default
-    pass: process.env.GMAIL_APP_PASSWORD || 'your-email-password', // Use environment variable or default
-  },
-});
+/**
+ * Check if email credentials are properly configured
+ * @returns {boolean} - Whether email sending is enabled
+ */
+const isEmailConfigured = () => {
+  return !!(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
+};
+
+// Create a nodemailer transporter if credentials are available
+const createTransporter = () => {
+  if (!isEmailConfigured()) {
+    console.warn('Email credentials not found in environment variables. Email sending will be skipped.');
+    return null;
+  }
+  
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD,
+    },
+  });
+};
 
 /**
  * Send email to notify donors about a blood request
  * @param {Array} donors - Array of donor objects with email addresses
  * @param {Object} requestDetails - Details of the blood request
- * @returns {Promise} - Promise that resolves when all emails are sent
+ * @returns {Promise} - Promise that resolves when all emails are sent or simulation is completed
  */
 const sendBloodRequestEmails = async (donors, requestDetails) => {
   try {
+    // Check if email is configured
+    if (!isEmailConfigured()) {
+      console.log(`Email sending skipped (no credentials). Would have sent to ${donors.length} donors.`);
+      return { 
+        success: true, 
+        message: 'Email sending skipped (dummy mode)',
+        dummy: true,
+        matchedCount: donors.length 
+      };
+    }
+
+    // Create transporter
+    const transporter = createTransporter();
+    
     // Extract request details
     const { requesterName, bloodGroup, location, contactNumber, urgency, additionalInfo } = requestDetails;
     
     // Create email options
     const mailOptions = {
-      from: process.env.GMAIL_USER || 'your-email@gmail.com',
+      from: process.env.GMAIL_USER,
       subject: `Urgent Blood Request: ${bloodGroup} Blood Needed`,
       html: `
         <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
@@ -56,13 +85,24 @@ const sendBloodRequestEmails = async (donors, requestDetails) => {
     await Promise.all(emailPromises);
     
     console.log(`Blood request notification sent to ${donors.length} donors`);
-    return { success: true, message: 'Notifications sent successfully' };
+    return { 
+      success: true, 
+      message: 'Notifications sent successfully',
+      dummy: false,
+      matchedCount: donors.length 
+    };
   } catch (error) {
     console.error('Error sending blood request emails:', error);
-    return { success: false, message: 'Failed to send notifications', error };
+    return { 
+      success: false, 
+      message: 'Failed to send notifications', 
+      error,
+      dummy: false
+    };
   }
 };
 
 module.exports = {
-  sendBloodRequestEmails
+  sendBloodRequestEmails,
+  isEmailConfigured
 }; 

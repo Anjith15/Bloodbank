@@ -164,12 +164,13 @@ function Request() {
         );
         
         if (response.data && !response.data.error) {
-          const { notifiedDonors } = response.data.payload._doc || {};
-          
           toast.success("Blood request created successfully!");
           
-          if (notifiedDonors && notifiedDonors > 0) {
-            toast.info(`${notifiedDonors} matching donors have been notified via email`);
+          // Check if email was sent in dummy mode
+          if (response.data.dummy) {
+            toast.info(`Email notifications simulated for ${response.data.matchedCount} matching donors (demo mode)`);
+          } else if (response.data.matchedCount > 0) {
+            toast.success(`Email notifications sent to ${response.data.matchedCount} matching donors`);
           } else {
             toast.info("No matching donors were found to notify");
           }

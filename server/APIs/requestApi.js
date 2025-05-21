@@ -3,7 +3,7 @@ const requestApp = express.Router();
 const RequestModel = require('../models/requestModel');
 const UserModel = require('../models/userModel');
 const expressAsyncHandler = require('express-async-handler');
-const { sendBloodRequestEmails } = require('../services/emailService');
+const { sendBloodRequestEmails, isEmailConfigured } = require('../services/emailService');
 const verifyToken = require('../middlewares/verifyToken');
 
 // Add body parser middleware
@@ -33,10 +33,16 @@ requestApp.post(
         city: requestData.city
       });
       
+      let emailResponse = {
+        success: false,
+        dummy: false,
+        matchedCount: 0
+      };
+      
       // If there are matching donors, send email notifications
       if (matchingDonors.length > 0) {
         // Send emails to matching donors
-        const emailResponse = await sendBloodRequestEmails(matchingDonors, {
+        emailResponse = await sendBloodRequestEmails(matchingDonors, {
           requesterName: requestData.requesterName,
           bloodGroup: requestData.bloodGroup,
           location: `${requestData.city}, ${requestData.state}`,
@@ -48,18 +54,28 @@ requestApp.post(
         // Add notification details to response
         dbRes._doc.notificationSent = emailResponse.success;
         dbRes._doc.notifiedDonors = matchingDonors.length;
+        dbRes._doc.dummy = emailResponse.dummy;
       } else {
         dbRes._doc.notificationSent = false;
         dbRes._doc.notifiedDonors = 0;
+        dbRes._doc.dummy = false;
       }
+      
+      // Check email configuration for response
+      const emailConfigured = isEmailConfigured();
       
       // Send response
       res.status(201).send({ 
         message: "Blood request created successfully", 
-        error: false, 
+        error: false,
+        dummy: emailResponse.dummy,
+        emailConfigured: emailConfigured,
+        matchedCount: matchingDonors.length,
         payload: dbRes 
       });
     } catch (err) {
+      console.error("Error creating blood request:", err);
+      
       // Handle validation errors
       if (err.name === 'ValidationError') {
         const validationErrors = Object.values(err.errors).map(error => error.message);

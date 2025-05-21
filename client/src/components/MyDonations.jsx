@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaTint, FaCalendarAlt, FaMapMarkerAlt, FaHospital, FaCheckCircle, FaUserAlt, FaHistory, FaExclamationTriangle } from 'react-icons/fa';
+import { FaTint, FaCalendarAlt, FaMapMarkerAlt, FaHospital, FaCheckCircle, FaUserAlt, FaHistory, FaExclamationTriangle, FaInfoCircle } from 'react-icons/fa';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
@@ -18,6 +18,7 @@ function MyDonations() {
     lastDonation: null
   });
   const [error, setError] = useState(null);
+  const [isDummyData, setIsDummyData] = useState(false);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -35,12 +36,56 @@ function MyDonations() {
     }
   }, [isLoggedIn, user]);
 
+  // Dummy donation data for fallback
+  const dummyDonations = [
+    {
+      _id: 'dummy1',
+      date: new Date('2023-03-15'),
+      center: 'City General Hospital',
+      address: '123 Main St, Downtown',
+      bloodGroup: user?.bloodGroup || 'O+',
+      units: 1,
+      status: 'Completed'
+    },
+    {
+      _id: 'dummy2',
+      date: new Date('2023-06-22'),
+      center: 'Red Cross Blood Drive',
+      address: '456 Park Ave, Uptown',
+      bloodGroup: user?.bloodGroup || 'O+',
+      units: 1,
+      status: 'Completed'
+    }
+  ];
+
+  // Dummy appointment data for fallback
+  const dummyAppointments = [
+    {
+      _id: 'appt1',
+      date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      time: '10:00 AM',
+      center: 'City General Hospital',
+      address: '123 Main St, Downtown'
+    },
+    {
+      _id: 'appt2',
+      date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      time: '2:30 PM',
+      center: 'Community Blood Center',
+      address: '789 Medical Drive, Midtown'
+    }
+  ];
+
   const fetchDonations = async () => {
     setIsLoading(true);
     setError(null);
     try {
       // Get authentication token
       const token = localStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
       
       // API endpoint for donations history
       const response = await axios.get("http://localhost:3000/donation-api/history", {
@@ -51,26 +96,46 @@ function MyDonations() {
       if (response.data && !response.data.error) {
         const donationData = response.data.payload || [];
         
-        // Sort by date (most recent first)
-        donationData.sort((a, b) => new Date(b.date) - new Date(a.date));
-        
-        setDonations(donationData);
+        // If no donations found and not in dummy mode, use dummy data
+        if (donationData.length === 0) {
+          setDonations(dummyDonations);
+          setIsDummyData(true);
+          toast.info("No donation history found. Showing sample data for demonstration.");
+        } else {
+          // Sort by date (most recent first)
+          donationData.sort((a, b) => new Date(b.date) - new Date(a.date));
+          setDonations(donationData);
+          setIsDummyData(false);
+        }
         
         // Calculate stats
+        const totalDonations = donationData.length > 0 ? donationData.length : dummyDonations.length;
         setStats({
-          totalDonations: donationData.length,
-          livesSaved: donationData.length * 3, // Each donation can save up to 3 lives
-          lastDonation: donationData.length > 0 ? new Date(donationData[0].date) : null
+          totalDonations: totalDonations,
+          livesSaved: totalDonations * 3, // Each donation can save up to 3 lives
+          lastDonation: donationData.length > 0 ? new Date(donationData[0].date) : 
+                        (dummyDonations.length > 0 ? dummyDonations[0].date : null)
         });
       } else {
         // Handle API error response
-        setError("Could not retrieve donation history");
-        toast.error("Failed to load donation history");
+        throw new Error(response.data?.message || "Could not retrieve donation history");
       }
     } catch (error) {
       console.error('Error fetching donations:', error);
-      setError("Connection error. Please try again later.");
-      toast.error("Failed to load your donation history");
+      setError("Unable to load your donation history. Showing demo data instead.");
+      
+      // Use dummy data as fallback
+      setDonations(dummyDonations);
+      setIsDummyData(true);
+      
+      // Set stats based on dummy data
+      setStats({
+        totalDonations: dummyDonations.length,
+        livesSaved: dummyDonations.length * 3,
+        lastDonation: dummyDonations[0].date
+      });
+      
+      toast.warning("Using demo data for donation history");
     } finally {
       setIsLoading(false);
     }
@@ -81,6 +146,10 @@ function MyDonations() {
       // Get authentication token
       const token = localStorage.getItem('token');
       
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+      
       // API endpoint for appointments
       const response = await axios.get("http://localhost:3000/donation-api/appointments", {
         headers: { Authorization: `Bearer ${token}` }
@@ -89,17 +158,42 @@ function MyDonations() {
       // Check if request was successful
       if (response.data && !response.data.error) {
         const appointmentData = response.data.payload || [];
-        setUpcomingAppointments(appointmentData);
+        
+        // If no appointments found or error in fetching, use dummy data
+        if (appointmentData.length === 0) {
+          setUpcomingAppointments(dummyAppointments);
+          if (!isDummyData) {
+            toast.info("No upcoming appointments found. Showing sample data for demonstration.");
+          }
+        } else {
+          setUpcomingAppointments(appointmentData);
+        }
       } else {
-        console.error("Error in appointment data:", response.data);
+        throw new Error(response.data?.message || "Could not retrieve appointments");
       }
     } catch (error) {
       console.error('Error fetching appointments:', error);
+      
+      // Use dummy data as fallback
+      setUpcomingAppointments(dummyAppointments);
+      
+      if (!isDummyData) {
+        toast.warning("Using demo data for upcoming appointments");
+      }
     }
   };
 
   const cancelAppointment = async (appointmentId) => {
     try {
+      // If using dummy data, just remove from UI
+      if (isDummyData) {
+        setUpcomingAppointments(prev => 
+          prev.filter(appointment => appointment._id !== appointmentId)
+        );
+        toast.success('Appointment canceled successfully (demo mode)');
+        return;
+      }
+      
       // Get authentication token
       const token = localStorage.getItem('token');
       
@@ -120,7 +214,7 @@ function MyDonations() {
     }
   };
 
-  if (error && !isLoading) {
+  if (error && !isLoading && !isDummyData) {
     return (
       <div className="container py-5">
         <div className="alert alert-danger d-flex align-items-center">
@@ -147,6 +241,12 @@ function MyDonations() {
           <h2 className="text-center" style={{ color: '#D32F2F', fontWeight: '600' }}>
             My Blood Donation History
           </h2>
+          {isDummyData && (
+            <div className="alert alert-info mt-3 text-center">
+              <FaInfoCircle className="me-2" />
+              You're viewing demonstration data. Connect your database to see real donation data.
+            </div>
+          )}
         </div>
       </div>
 
@@ -210,7 +310,7 @@ function MyDonations() {
                       <div className="p-3 rounded bg-light">
                         <h2 className="mb-0" style={{ color: '#D32F2F' }}>
                           {stats.lastDonation ? 
-                            format(stats.lastDonation, 'MMM dd') : 
+                            format(new Date(stats.lastDonation), 'MMM dd') : 
                             '–'}
                         </h2>
                         <p className="small mb-0">Last Donation</p>
